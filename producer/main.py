@@ -1,5 +1,5 @@
 """
-Kafka Producer: Reads events from input.jsonl, serializes to JSON,
+Kafka Producer: Reads events from input.jsonl, serializes to JSON line,
 and publishes them to Kafka topic 'message-events' with retry logic.
 """
 
@@ -19,7 +19,7 @@ producer = Producer({
 # Callback to confirm message delivery
 def delivery_report(err: KafkaError, msg) -> None:
     """
-    Callback function triggered when a message is successfully delivered or fails.
+    Callback function triggered by message, with failure tolerance
     """
     if err is not None:
         print(f"Delivery failed for record {msg.key()}: {err}")
@@ -36,36 +36,35 @@ def delivery_report(err: KafkaError, msg) -> None:
                     f"{hours_ago:.2f} hours ago to the topic: `{msg.topic()}` at offset {msg.offset()}"
                 )
             else:
-                print("Timestamp missing in payload.")
+                print("Timestamp missing in json data, cannot transform.")
         except (json.JSONDecodeError, KeyError, ValueError) as e:
             print(f"Error processing message: {e}")
 
 
 def send_event(event: Dict[str, Any], max_retries: int = 5) -> None:
     """
-    Try sending an event to Kafka with retries on transient errors.
+    Try sending an event to Kafka with max retries
     """
     retries = 0
     while retries < max_retries:
         try:
-            # Serialize and send
             producer.produce(
                 topic='message-events',
                 value=json.dumps(event),
                 callback=delivery_report
             )
-            producer.poll(0)  # Trigger callbacks
+            producer.poll(0)
             return  # Exit after successful send
         except BufferError:
-            print("⚠️ Buffer full. Retrying...")
+            print("Buffer full. Retrying...")
             time.sleep(1)
             retries += 1
         except KafkaException as ke:
-            print(f"⚠️ Kafka error: {ke}. Retrying...")
+            print(f"Kafka error: {ke}. Retrying...")
             time.sleep(1)
             retries += 1
         except Exception as e:
-            print(f"⚠️ Unexpected error: {e}. Retrying...")
+            print(f"Unexpected error: {e}. Retrying...")
             time.sleep(1)
             retries += 1
 
@@ -88,9 +87,9 @@ def main():
                     print(f"Skipping invalid JSON: {line} — {je}")
 
     except FileNotFoundError:
-        print(f"❗ Input file {input_file} not found.")
+        print(f"Input file {input_file} not found.")
     except Exception as e:
-        print(f"❗ Unexpected error: {e}")
+        print(f"Unexpected error: {e}")
     finally:
         print("Flushing remaining messages...")
         producer.flush()
