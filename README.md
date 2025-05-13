@@ -1,6 +1,6 @@
 # Setup steps
 ## Clone the repo
-git clone https://github.com/your-username/kafka-data-pipeline.git
+git clone https://github.com/dnsing/kafka_pipeline_assignment.git
 cd kafka-data-pipeline
 
 ## Install dependencies
